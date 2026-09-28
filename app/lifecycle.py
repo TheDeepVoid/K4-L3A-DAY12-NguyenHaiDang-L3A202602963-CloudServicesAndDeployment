@@ -25,14 +25,6 @@ class Lifecycle:
     def request_shutdown(self, signum=None, frame=None) -> None:
         """Signal handler: đánh dấu process đang tắt dần.
 
-        TODO (CP4):
-          1. ``self.shutting_down = True``
-          2. Gọi lại handler cũ nếu có::
-
-                previous = self._previous.get(signum)
-                if callable(previous):
-                    previous(signum, frame)
-
         Bước 2 quan trọng hơn vẻ ngoài của nó. Mỗi tín hiệu chỉ có **một**
         handler: đăng ký handler của mình là ghi đè handler của uvicorn — thứ
         chịu trách nhiệm thật sự cho việc dừng server. Không gọi lại nó thì
@@ -44,19 +36,36 @@ class Lifecycle:
         tham số này. Không làm gì nặng ở đây (không gọi mạng, không ghi file)
         — handler chạy xen giữa bytecode.
         """
-        raise NotImplementedError("TODO (CP4): cài đặt request_shutdown")
+        # Handler chạy xen giữa bytecode nên chỉ làm việc rất nhẹ: chỉ bật
+        # cờ. Bật cờ -> /health trả 503 -> load balancer rút instance này
+        # khỏi vòng xoay -> uvicorn xử lý nốt request đang chạy rồi thoát.
+        self.shutting_down = True
+
+        # Nhường lại việc dừng server cho handler đã đăng ký trước ta.
+        # self._previous.get(signum) trả về None nếu chưa có ai đăng ký
+        # (SIGTERM mặc định là SIG_DFL, vẫn là callable nên vẫn nhận lời).
+        previous = self._previous.get(signum)
+        if callable(previous):
+            previous(signum, frame)
 
     def install(self) -> None:
         """Đăng ký handler cho SIGTERM và SIGINT, nhớ lại handler cũ.
 
-        TODO (CP4): với mỗi tín hiệu trong ``(signal.SIGTERM, signal.SIGINT)``:
+        Với mỗi tín hiệu trong ``(signal.SIGTERM, signal.SIGINT)``:
 
             self._previous[sig] = signal.getsignal(sig)   # nhớ handler cũ
             signal.signal(sig, self.request_shutdown)     # rồi mới ghi đè
 
         SIGTERM: orchestrator yêu cầu tắt. SIGINT: bạn bấm Ctrl+C.
         """
-        raise NotImplementedError("TODO (CP4): cài đặt install")
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            # Nhớ handler cũ TRƯỚC khi ghi đè, không phải sau. Ghi đè
+            # trước rồi hỏi lại thì chỉ nhận được handler của chính mình.
+            self._previous[sig] = signal.getsignal(sig)
+            # Truyền THAM CHIẾU hàm `self.request_shutdown`, không truyền
+            # `self.request_shutdown()` — truyền kết quả gọi hàm thì handler
+            # bị đăng ký là None và tín hiệu bị bỏ qua hoàn toàn.
+            signal.signal(sig, self.request_shutdown)
 
 
 # Một instance dùng chung cho cả app

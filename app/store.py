@@ -47,33 +47,50 @@ class ConversationStore:
     def ping(self) -> bool:
         """Redis có trả lời không? Dùng cho endpoint /ready.
 
-        TODO (CP4): gọi ``self.client.ping()`` trong try/except.
+        Gọi ``self.client.ping()`` trong try/except.
         Trả ``True`` nếu thành công, ``False`` nếu có bất kỳ Exception nào
         (mất mạng, sai mật khẩu, Redis chưa khởi động...).
         """
-        raise NotImplementedError("TODO (CP4): cài đặt ping")
+        # Nuot moi exception va tra False. Ly do: ham nay duoc goi tu
+        # /ready, va mot exception tho ra se bien readiness probe thanh loi
+        # 500 — luc do orchestrator/toan bo load balancer coi service dang
+        # hong, trong khi thuoc tinh la chi co mot dependency chet.
+        try:
+            return bool(self.client.ping())
+        except Exception:
+            return False
 
     def append(self, user_id: str, role: str, content: str) -> None:
         """Ghi thêm một lượt vào lịch sử.
 
-        TODO (CP4):
-          1. ``self.client.rpush(key, json.dumps({"role": role, "content": content},
-             ensure_ascii=False))``
-          2. ``self.client.ltrim(key, -HISTORY_MAX_MESSAGES, -1)`` — chỉ giữ
-             ``HISTORY_MAX_MESSAGES`` message gần nhất, nếu không prompt sẽ
-             phình vô hạn và tiền token cũng vậy.
-          3. ``self.client.expire(key, HISTORY_TTL_SECONDS)`` — hội thoại cũ
-             tự hết hạn, khỏi phải dọn tay.
+        1. ``self.client.rpush(key, json.dumps({"role": role, "content": content},
+           ensure_ascii=False))``
+        2. ``self.client.ltrim(key, -HISTORY_MAX_MESSAGES, -1)`` — chỉ giữ
+           ``HISTORY_MAX_MESSAGES`` message gần nhất, nếu không prompt sẽ
+           phình vô hạn và tiền token cũng vậy.
+        3. ``self.client.expire(key, HISTORY_TTL_SECONDS)`` — hội thoại cũ
+           tự hết hạn, khỏi phải dọn tay.
         """
-        raise NotImplementedError("TODO (CP4): cài đặt append")
+        key = self._key(user_id)
+        # ensure_ascii=False: nội dung tiếng Việt đọc lại từ Redis giữ nguyên
+        # dấu, không thành chuỗi \uXXXX khó đọc khi debug bằng tay.
+        self.client.rpush(key, json.dumps({"role": role, "content": content}, ensure_ascii=False))
+        # ltrim với chỉ số ÂM giữ N phần tử CUỐI cùng (mới nhất). Dùng
+        # `ltrim(key, 0, N-1)` sẽ giữ nhầm N tin cũ nhất và xoá mất câu
+        # trả lời vừa rồi — chính là tin quan trọng nhất với context.
+        self.client.ltrim(key, -HISTORY_MAX_MESSAGES, -1)
+        # TTL: hội thoại không ai hỏi nữa sẽ tự biến mất. Không đặt TTL thì
+        # Redis đầy dần theo thời gian và đến một lúc sập.
+        self.client.expire(key, HISTORY_TTL_SECONDS)
 
     def get_history(self, user_id: str) -> list[dict]:
         """Đọc lịch sử hội thoại, cũ nhất trước.
 
-        TODO (CP4): ``self.client.lrange(key, 0, -1)`` rồi ``json.loads``
+        ``self.client.lrange(key, 0, -1)`` rồi ``json.loads``
         từng phần tử. Chưa có gì → trả về list rỗng.
         """
-        raise NotImplementedError("TODO (CP4): cài đặt get_history")
+        raw = self.client.lrange(self._key(user_id), 0, -1)
+        return [json.loads(item) for item in raw]
 
     def clear(self, user_id: str) -> None:
         """CHO SẴN — xóa lịch sử của một user."""

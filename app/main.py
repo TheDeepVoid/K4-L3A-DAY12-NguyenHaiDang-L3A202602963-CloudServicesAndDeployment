@@ -94,15 +94,27 @@ def health():
 def ready(store: ConversationStore = Depends(get_store)):
     """Readiness probe — đã sẵn sàng nhận traffic chưa?
 
-    TODO (CP4):
-      - Đang tắt dần → 503 ``{"status": "shutting_down"}``
-      - ``store.ping()`` False → 503 ``{"status": "not ready", "redis": False}``
-      - Ngược lại → ``{"status": "ready", "redis": True}``
+    - Đang tắt dần → 503 ``{"status": "shutting_down"}``
+    - ``store.ping()`` False → 503 ``{"status": "not ready", "redis": False}``
+    - Ngược lại → ``{"status": "ready", "redis": True}``
 
     Khác /health ở chỗ: endpoint này ĐƯỢC PHÉP kiểm tra dependency. Load
     balancer dùng nó để quyết định có đẩy request vào instance này không.
     """
-    raise NotImplementedError("TODO (CP4): cài đặt /ready")
+    # Cùng lý do như /health: đang tắt dần thì instance này sắp biến mất,
+    # dù Redis còn sống thì cũng không nên nhận thêm request mới.
+    if lifecycle.shutting_down:
+        return JSONResponse(status_code=503, content={"status": "shutting_down"})
+
+    # Phải dùng KẾT QUẢ của ping(). `if not store.ping()` — bỏ mất kết quả
+    # thì /ready luôn trả 200 kể cả khi Redis đã chết, và load balancer vẫn
+    # đẩy traffic vào một instance không phục vụ được.
+    if not store.ping():
+        return JSONResponse(
+            status_code=503, content={"status": "not ready", "redis": False}
+        )
+
+    return {"status": "ready", "redis": True}
 
 
 # ─────────────────────────────────────────────────────────────
