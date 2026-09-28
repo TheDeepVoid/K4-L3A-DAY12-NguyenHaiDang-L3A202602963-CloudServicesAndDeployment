@@ -71,6 +71,31 @@ class AskRequest(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────
+# Trang chủ
+# ─────────────────────────────────────────────────────────────
+@app.get("/")
+def index():
+    """Mở Public URL ra mà thấy 404 thì tưởng service chết.
+
+    Không có route `/` thì FastAPI trả ``{"detail":"Not Found"}`` — trông
+    y hệt một deploy hỏng, dù ``/health`` vẫn 200. Người mở link công
+    khai lần đầu thường thử đúng đường dẫn gốc, nên ở đây chỉ trả về
+    danh sách endpoint và trạng thái, không chạm vào Redis để liveness
+    vẫn nhẹ.
+    """
+    return {
+        "service": SERVICE_NAME,
+        "version": SERVICE_VERSION,
+        "endpoints": {
+            "GET /health": "liveness — không phụ thuộc dependency",
+            "GET /ready": "readiness — có kiểm tra Redis",
+            "POST /ask": "hỏi agent (cần header X-API-Key)",
+            "GET /docs": "OpenAPI docs tương tác",
+        },
+    }
+
+
+# ─────────────────────────────────────────────────────────────
 # Health & readiness
 # ─────────────────────────────────────────────────────────────
 @app.get("/health")
