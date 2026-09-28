@@ -33,7 +33,7 @@ Hai địa chỉ này khác nhau, đừng nhầm:
 |-----|----------|
 | Service ID | `srv-dat24j0473hc73ee404g` |
 | Redis instance ID | `red-dat225l9fdbs73fk0u2g` |
-| Deploy hiện tại | `dep-dat2pcbbc2fs73av2g3g` — trạng thái `live`, commit `930fc6d` |
+| Deploy hiện tại | `dep-dat35ngu01pc739pa2b0` — trạng thái `live`, commit `b385f73` |
 | Auto deploy | bật (`autoDeployTrigger: commit`) — push `main` là Render tự build lại |
 | `healthCheckPath` | `/health` (giữ nguyên, **không** đổi sang `/`) |
 | CI/CD | GitHub Actions xanh — `Test (CP1-CP4)` 12s, `Build Docker image` 41s, `Deploy len Render` 6s |
@@ -178,7 +178,8 @@ $ for i in 1 2 3 4 5; do curl -s -X POST https://day12-agent-m3m7.onrender.com/a
 
 | File | Nội dung |
 |---|---|
-| `dashboard.png` | Trạng thái web service, Redis instance, danh sách biến môi trường và deploy gần nhất trên Render |
+| `dashboard.png` | Trang quản lý web service trên Render: tên `day12-agent`, badge **Docker** + **Free**, Service ID, repo + nhánh `main`, trạng thái **Live**, Public URL, và lịch sử 9 deploy kèm commit hash |
+| `redis.png` | Trang Render Key Value `day12-redis`: trạng thái **Available**, maxmemory policy `allkeys-lru`, persistence `Off` |
 | `index.png` | `GET /` trên Public URL |
 | `health.png` | `GET /health` trên Public URL |
 | `ready.png` | `GET /ready` — `{"status":"ready","redis":true}` |
@@ -186,20 +187,18 @@ $ for i in 1 2 3 4 5; do curl -s -X POST https://day12-agent-m3m7.onrender.com/a
 | `ask_authorized.png` | `POST /ask` có API key → **200**, hai lượt cùng user thấy `history_length` 0 rồi 2 |
 | `docs.png` | OpenAPI docs `/docs` |
 
+Hai ảnh `dashboard.png` và `redis.png` chụp trực tiếp giao diện Render:
+
+- `dashboard.png` — trang service cho thấy badge **Live** cùng lịch sử deploy,
+  tức bản đang chạy được build từ những commit có trong repo này.
+- `redis.png` — trang Key Value cho thấy instance **Available**. Ảnh chụp ở
+  mục *Info*, **không** chụp mục *Connections*, nên connection string và mật
+  khẩu không xuất hiện trong ảnh.
+
 Các ảnh `index` / `health` / `ready` / `ask_*` chụp bằng Playwright điều khiển
 Brave, **gọi thẳng vào Public URL của Render** — không phải `localhost`.
 Request `POST /ask` được bắn từ chính trang `https://...onrender.com/health`
 nên là request same-origin thật, không phải mô phỏng.
-
-> **Ghi chú về ảnh `dashboard.png`:** ảnh này dựng từ output thật của Render
-> API (`GET /v1/services/srv-...`, `GET /v1/services/.../env-vars`,
-> `GET /v1/services/.../deploys`), chứ **không phải** ảnh chụp giao diện
-> dashboard. Lý do: tài khoản Render đăng nhập bằng Google và máy không có
-> phiên đăng nhập nào sẵn, nên không mở được dashboard để chụp màn hình.
-> Các trường trong ảnh (`status = live`, `plan = free`, `region = oregon`,
-> `health check = /health`, danh sách tên biến) lấy nguyên văn từ API nên vẫn
-> kiểm chứng được độc lập. Tên biến `AGENT_API_KEY` và `REDIS_URL` chỉ in
-> **tên**, không in giá trị.
 
 > **Ghi chú về ảnh `ask_authorized.png`:** khóa API được đọc từ `.env` cục bộ
 > và chỉ dùng làm header khi gọi. Giá trị khóa **không** xuất hiện trong ảnh —
