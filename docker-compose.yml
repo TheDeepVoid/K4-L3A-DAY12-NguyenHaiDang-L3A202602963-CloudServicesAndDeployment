@@ -1,20 +1,14 @@
 # ═══════════════════════════════════════════════════════════════════
-# CP2 — Stack chạy ở máy bạn: agent + redis (+ nginx nếu làm phần cộng điểm)
+# CP2 — Stack chạy ở máy bạn: agent + redis (+ nginx nếu làm phần mở rộng)
 #
-# Service `redis` đã cho sẵn — chạy ngay từ Block 1 để có Redis mà code:
+# Chạy Redis riêng từ Block 1 để có Redis mà code:
 #     docker compose up -d redis
 #
-# NHIỆM VỤ: bổ sung service `agent`. Yêu cầu:
-#   [ ] build từ Dockerfile trong thư mục hiện tại
-#   [ ] map cổng ra ngoài (8000:8000)
-#   [ ] KHÔNG viết secret thẳng vào file này — dùng nội suy biến môi trường
-#       `${AGENT_API_KEY}` (docker compose tự đọc từ file .env cùng thư mục)
-#   [ ] REDIS_URL trỏ tới `redis://redis:6379/0` — trong compose, tên service
-#       chính là hostname
-#   [ ] depends_on: redis
-#   [ ] healthcheck gọi /health
+# Chạy cả stack (sau khi đã điền AGENT_API_KEY trong .env):
+#     docker compose up -d
+#     curl http://localhost:8000/health
 #
-# MỞ RỘNG TÙY CHỌN: thêm service `nginx` làm load balancer
+# MỞ RỘNG TïY CHỌN: thêm service `nginx` làm load balancer
 # (không phải bonus chấm điểm riêng; nginx/nginx.conf đã có sẵn)
 #     docker compose up --scale agent=3
 #
@@ -35,10 +29,45 @@ services:
       timeout: 3s
       retries: 5
 
-  # TODO (CP2): khai báo service `agent` ở đây
-  # agent:
-  #   build: .
-  #   ...
+  agent:
+    build: .
+    ports:
+      - "8000:8000"
+    # depends_on + condition: service_started ở mức tối thiểu. Không dùng
+    # `condition: service_healthy` vì nó làm `docker compose up` phải chờ
+    # Redis healthy rồi mới khởi động agent — cần thiết khi deploy có
+    # orchestrator thật, nhưng ở máy thì thừa. App vẫn chịu được lúc
+    # Redis chưa sẵn sàng vì /ready trả 503 thay vì crash.
+    depends_on:
+      redis:
+        condition: service_started
+    environment:
+      # Nội suy biến: docker compose tự đọc từ file .env cùng thư mục.
+      # TUYỆT ĐỐI không viết thẳng khóa vào file này — repo này được
+      # commit, `.env` thì không.
+      AGENT_API_KEY: ${AGENT_API_KEY}
+      # `redis` là TÊN SERVICE, cũng chính là hostname trong mạng nội bộ
+      # của compose. Ghi `localhost` ở đây là sai kinh điển: bên trong
+      # container, localhost là chính container agent, không phải Redis.
+      REDIS_URL: redis://redis:6379/0
+      PORT: "8000"
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-10}
+      MONTHLY_BUDGET_USD: ${MONTHLY_BUDGET_USD:-10.0}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health').read()"
+      interval: 30s
+      timeout: 5s
+      # start_period cho uvicorn thời gian nạp app trước khi probe bắt
+      # đầu đếm fail — nếu không, container bị đánh dấu unhealthy lúc mới
+      # khởi động dù app hoàn toàn ổn.
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
 
 volumes:
   redis-data:

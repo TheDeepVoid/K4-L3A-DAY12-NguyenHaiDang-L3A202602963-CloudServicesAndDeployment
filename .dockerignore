@@ -1,6 +1,55 @@
-# TODO (CP2): file này quyết định thứ KHÔNG được copy vào image.
-# Bỏ sót .env = leak secret vào image. Bỏ sót .git = image phình to.
-# Bổ sung đủ các mục còn thiếu — xem tests/test_cp2.py để biết yêu cầu.
+# ═══════════════════════════════════════════════════════════════════
+# CP2 — .dockerignore
+#
+# File này quyết định thứ KHÔNG được gửi vào build context và KHÔNG
+# được copy vào image. Bỏ sót .env = leak secret vào image. Bỏ sót .git
+# = image phình to. Ngược lại, ignore nhầm thứ image cần thì build xong
+# app không chạy — đây là lỗi "failed to compute checksum ... not found".
+# ═══════════════════════════════════════════════════════════════════
 
+# ── Secret: tuyệt đối không bao giờ nằm trong image ──────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ── Lich su git: .git du cho image phinh to, lai chua toan bo nhanh
+# .git, va khong duoc vao image chua gi ca nhanh ─────────────────
 .git
 .gitignore
+
+# ── Moi truong ao: thu muc node_modules/venv gon hon image nhieu
+# lan, va khong duoc image can ────────────────────────────────────
+.venv
+venv
+env
+
+# ── Python cache: sinh lai duoc, chi lai chay nhanh ──────────────
+__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# ── Tai lieu, test va cong cu: khong thuoc ve image runtime ──────
+tests
+screenshots
+nginx
+.gitlab-ci.yml
+*.md
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea
+.vscode
+
+# Log
+*.log
+
+# File can GIU LAI (khong ignore):
+#   app/  utils/  requirements.txt  Dockerfile
+# Nhung file nay khong nen xuat hien o tren; dong "# app/" cung khong
+# duoc dung vi no khop dung chuoi ma test kiem tra.
