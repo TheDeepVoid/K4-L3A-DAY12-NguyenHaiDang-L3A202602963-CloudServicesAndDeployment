@@ -6,7 +6,7 @@
 > Cách trả lời: thay dòng giữ chỗ mỗi câu bằng câu trả lời của bạn.
 > `grade.py` đếm số câu đã trả lời (15 điểm cho 10 câu).
 >
-> Họ và tên: Nguyễn Hải Đăng   Mã học viên: L3A202602963
+> Họ và tên: Nguyễn Hải Đăng   Mã học viên: 2A202602963
 
 ---
 
