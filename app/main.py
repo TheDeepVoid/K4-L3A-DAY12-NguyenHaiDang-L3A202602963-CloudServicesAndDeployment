@@ -75,19 +75,19 @@ class AskRequest(BaseModel):
 # ─────────────────────────────────────────────────────────────
 @app.get("/health")
 def health():
-    """Liveness probe — process còn sống không?
+    """Liveness probe — process này có cần restart không?
 
-    TODO (CP1 + CP4):
-      - Đang tắt dần (``lifecycle.shutting_down``) → trả
-        ``JSONResponse(status_code=503, content={"status": "shutting_down"})``
-      - Bình thường → ``{"status": "ok", "service": SERVICE_NAME,
-        "version": SERVICE_VERSION}`` (mặc định FastAPI trả 200).
+    Cố tình **không** nhận tham số dependency nào: không Redis, không DB, không
+    API key. Nếu liveness phụ thuộc Redis, Redis chết một nhịp là cả cụm
+    container bị orchestrator restart theo — biến sự cố nhỏ thành sự cố lớn.
+    Endpoint kiểm tra dependency là ``/ready`` (CP4).
 
-    Endpoint này phải **nhẹ**: không gọi Redis, không query DB. Nó chỉ trả
-    lời câu hỏi "có cần restart container này không?". Nếu nó phụ thuộc
-    Redis, Redis chết một nhịp là cả cụm container bị restart theo.
+    Khi đang tắt dần (đã nhận SIGTERM) trả 503 để load balancer ngừng đẩy
+    request mới vào instance này, còn request đang chạy vẫn kịp trả lời.
     """
-    raise NotImplementedError("TODO (CP1/CP4): cài đặt /health")
+    if lifecycle.shutting_down:
+        return JSONResponse(status_code=503, content={"status": "shutting_down"})
+    return {"status": "ok", "service": SERVICE_NAME, "version": SERVICE_VERSION}
 
 
 @app.get("/ready")

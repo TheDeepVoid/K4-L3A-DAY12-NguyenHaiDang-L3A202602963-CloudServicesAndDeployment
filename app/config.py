@@ -15,9 +15,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Toàn bộ cấu hình của service.
 
-    TODO (CP1): khai báo các trường dưới đây. pydantic-settings tự đọc biến
-    môi trường theo tên trường (không phân biệt hoa thường), nên trường
-    ``agent_api_key`` sẽ lấy giá trị từ biến ``AGENT_API_KEY``.
+    pydantic-settings tự đọc biến môi trường theo tên trường (không phân biệt
+    hoa thường), nên trường ``agent_api_key`` sẽ lấy giá trị từ biến
+    ``AGENT_API_KEY`` mà không cần viết tay phần ánh xạ.
 
     | Trường                  | Kiểu  | Mặc định                   |
     |-------------------------|-------|----------------------------|
@@ -40,9 +40,19 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # TODO (CP1): khai báo 6 trường theo bảng trên, ví dụ:
-    #     port: int = 8000
-    #     agent_api_key: str
+    # Không phải secret thì có mặc định: app chạy được ngay ở laptop mà không
+    # phải cấu hình gì, và code vẫn tự tài liệu hoá được các giá trị hợp lý.
+    port: int = 8000
+    redis_url: str = "redis://localhost:6379/0"
+    rate_limit_per_minute: int = 10
+    monthly_budget_usd: float = 10.0
+    log_level: str = "INFO"
+
+    # Secret: KHÔNG có mặc định. pydantic-settings sẽ ném ValidationError ngay
+    # lúc khởi động process nếu biến AGENT_API_KEY không tồn tại — đó chính là
+    # fail fast: lỗi lộ ra lúc deploy (khi còn nhìn màn hình) thay vì lúc có
+    # người lạ gọi API bằng khóa mặc định và bạn chỉ biết khi nhìn hóa đơn.
+    agent_api_key: str
 
 
 @lru_cache(maxsize=1)
