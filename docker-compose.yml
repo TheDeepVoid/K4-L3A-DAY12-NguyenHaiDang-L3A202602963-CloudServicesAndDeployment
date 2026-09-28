@@ -31,8 +31,19 @@ services:
 
   agent:
     build: .
+    # Dải cổng, KHÔNG phải một cổng cố định.
+    #
+    # LAB_GUIDE.md §Block 4 và câu 9 của exercises.md đều bảo chạy
+    # `docker compose up -d --scale agent=3`. Nếu map cứng `8000:8000` thì cả
+    # 3 replica đều muốn chiếm cổng 8000 của host và lệnh đó chết ngay:
+    #   Bind for 0.0.0.0:8000 failed: port is already allocated
+    # Docker cấp phát cổng host từ TRONG dải, nên chạy 1 instance vẫn ra
+    # 8000 đúng như cũ, chạy 3 instance thì lấy 8000, 8001, 8002.
+    #
+    # Muốn biết instance nào ở cổng nào: `docker compose ps`, rồi
+    # curl http://localhost:8002/health v.v.
     ports:
-      - "8000:8000"
+      - "8000-8002:8000"
     # depends_on + condition: service_started ở mức tối thiểu. Không dùng
     # `condition: service_healthy` vì nó làm `docker compose up` phải chờ
     # Redis healthy rồi mới khởi động agent — cần thiết khi deploy có

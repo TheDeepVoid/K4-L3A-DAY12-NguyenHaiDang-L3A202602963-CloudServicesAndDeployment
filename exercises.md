@@ -335,6 +335,27 @@ nếu state nằm trong RAM**: mỗi lượt tăng 2 vì mỗi lượt tôi `app
 (user + assistant). Nhưng trước khi `append`, `history_length` đếm lịch sử
 *đã có*, nên lượt đầu là 0, lượt hai là 2 — đúng như mong đợi.
 
+Sau đó tôi chạy đúng lệnh `docker compose up -d --scale agent=3` mà
+`LAB_GUIDE.md` và chính câu hỏi này dẫn dắt tới, rồi gọi 6 lượt cùng
+`X-User-Id: sv-scale` nhưng **cố tình xoay vòng cả 3 cổng** (8000 → 8001 →
+8002 → 8000 …) để mỗi request rơi vào một container khác nhau:
+
+```
+  luot 1 -> port 8000 -> history_length = 0
+  luot 2 -> port 8001 -> history_length = 2
+  luot 3 -> port 8002 -> history_length = 4
+  luot 4 -> port 8000 -> history_length = 6
+  luot 5 -> port 8001 -> history_length = 8
+  luot 6 -> port 8002 -> history_length = 10
+```
+
+Đây mới là bằng chứng thật sự: lượt thứ 4 quay lại port 8000 và vẫn thấy
+`history_length = 6`, tức là nó nhớ được 3 lượt đã đi qua **hai container
+hoàn toàn khác** ở giữa. Tôi kiểm tra thêm rate limit trên cùng cụm đó: 12
+lượt xoay vòng 3 cổng ra `200 200 200 200 200 200 200 200 200 200 429 429`
+— đúng 10 request rồi chặn, tức hạn mức 10/phút được **chia sẻ** giữa cả ba
+container chứ không phải mỗi process một bộ đếm riêng.
+
 **Nếu lịch sử nằm trong một dict Python thay vì Redis**, con số đó sẽ
 **nhảy cóc về 0 một cách ngẫu nhiên**, chứ không tăng đều. Cụ thể: giả sử
 load balancer có round-robin và chia 5 lượt cho 3 container A, B, C:
@@ -356,8 +377,28 @@ mất hoàn toàn.
 
 Đó chính là lý do `store.py` không giữ dict nào cả và `test_khong_co_bien_
 toan_cuc_giu_state` quét source để bắt trường hợp này. Lịch sử, rate limit
-và chi phí đều sống trong Render Key Value, nên mọi container cùng nhìn thấy
-một nguồn sự thật và scale ngang được mà không cần sticky session.
+và chi phí đều sống trong Redis, nên mọi container cùng nhìn thấy một nguồn
+sự thật và scale ngang được mà không cần sticky session.
+
+### Lỗi tôi gặp khi chạy lệnh scale
+
+Lần đầu `--scale agent=3` **chết ngay**:
+
+```
+Error response from daemon: failed to set up container networking:
+Bind for 0.0.0.0:8000 failed: port is already allocated
+```
+
+Nguyên nhân là tôi map cứng `ports: "8000:8000"` trong compose. Cả ba replica
+đều đòi chiếm cùng một cổng 8000 của host, mà host chỉ có một cổng đó. Sửa
+bằng cách đổi thành **dải** cổng `8000-8002:8000` — Docker cấp phát cổng host
+từ trong dải, nên chạy một instance vẫn ra 8000 như cũ, chạy ba thì lấy 8000,
+8001, 8002.
+
+Bài học ở đây tinh vi hơn chuyện "thêm cổng vào": chính việc **publish cổng
+cố định ra host** đã chặn scale ngang, dù app bên trong hoàn toàn stateless.
+Muốn scale được thì phải để lớp bên ngoài (load balancer, nginx, hay chính
+Render) quyết định cổng, không phải compose.
 
 ---
 
