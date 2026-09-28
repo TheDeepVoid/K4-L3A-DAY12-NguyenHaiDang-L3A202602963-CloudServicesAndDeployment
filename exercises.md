@@ -22,8 +22,7 @@ trường không tự xuất hiện — nó phải được khai báo tay trong 
 từng service. Nếu `agent_api_key` có mặc định là `"changeme"` thì chuyện gì
 xảy ra: tôi khai báo `REDIS_URL` và `PORT` xong, quên dòng `AGENT_API_KEY`,
 bấm deploy. App khởi động trơn tru, `/health` trả 200, Render báo **live**,
-tôi tưởng xong. Nhưng `AGENT_API_KEY="changeme"` chính là khóa hợp lệ — kẻ
-nào quét URL trên GitHub, SecurityTrails hay Shodan cũng thử được, và mỗi
+tôi tưởng xong. Nhưng `AGENT_API_KEY="changeme"` chính là khóa hợp lệ, ai quét URL trên GitHub, SecurityTrails hay Shodan cũng thử được, và mỗi
 lượt của họ là một lượt tôi trả tiền. Tôi chỉ phát hiện khi nhìn hóa đơn
 cuối tháng, lúc đó thống kê đã nhiễu và không biết chính xác mất bao nhiêu.
 

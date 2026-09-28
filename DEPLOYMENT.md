@@ -73,6 +73,12 @@ done; echo
 Dán output của các lệnh trên vào đây:
 
 ```
+$ # 0. Trang chủ — mở Public URL ra không ra 404
+$ curl -i https://day12-agent-m3m7.onrender.com/
+HTTP/2 200
+
+{"service":"day12-agent","version":"1.0.0","endpoints":{"GET /health":"liveness — không phụ thuộc dependency","GET /ready":"readiness — có kiểm tra Redis","POST /ask":"hỏi agent (cần header X-API-Key)","GET /docs":"OpenAPI docs tương tác"}}
+
 $ # 1. Liveness
 $ curl -i https://day12-agent-m3m7.onrender.com/health
 HTTP/2 200
@@ -149,20 +155,34 @@ $ for i in 1 2 3 4 5; do curl -s -X POST https://day12-agent-m3m7.onrender.com/a
 
 Đặt ảnh trong thư mục `screenshots/`:
 
-- `screenshots/dashboard.png` — trạng thái service, Redis instance, danh sách
-  biến môi trường và deploy gần nhất trên Render.
-- `screenshots/health.png` — kết quả gọi `/health` và `/ready` (kèm header
-  HTTP thật) từ trình duyệt hoặc curl.
+| File | Nội dung |
+|---|---|
+| `dashboard.png` | Trạng thái web service, Redis instance, danh sách biến môi trường và deploy gần nhất trên Render |
+| `index.png` | `GET /` trên Public URL |
+| `health.png` | `GET /health` trên Public URL |
+| `ready.png` | `GET /ready` — `{"status":"ready","redis":true}` |
+| `ask_unauth.png` | `POST /ask` không có API key → **401** |
+| `ask_authorized.png` | `POST /ask` có API key → **200**, hai lượt cùng user thấy `history_length` 0 rồi 2 |
+| `docs.png` | OpenAPI docs `/docs` |
 
-> **Ghi chú về ảnh `dashboard.png`:** ảnh này được chụp lại từ output thật
-> của Render API (`GET /v1/services/srv-...`, `GET /v1/services/.../env-vars`,
-> `GET /v1/services/.../deploys`) chứ không phải ảnh chụp giao diện dashboard.
-> Lý do: tài khoản Render đăng nhập bằng Google, không có phiên trình duyệt
-> nào sẵn có trên máy nên không thể mở dashboard để chụp ảnh màn hình. Các
-> trường trong ảnh (`status = live`, `plan = free`, `region = oregon`,
-> `health check = /health`, danh sách tên biến) lấy nguyên văn từ API, nên
-> vẫn kiểm chứng được độc lập. Tên biến `AGENT_API_KEY` và `REDIS_URL` chỉ in
-> tên, không in giá trị.
+Các ảnh `index` / `health` / `ready` / `ask_*` chụp bằng Playwright điều khiển
+Brave, **gọi thẳng vào Public URL của Render** — không phải `localhost`.
+Request `POST /ask` được bắn từ chính trang `https://...onrender.com/health`
+nên là request same-origin thật, không phải mô phỏng.
+
+> **Ghi chú về ảnh `dashboard.png`:** ảnh này dựng từ output thật của Render
+> API (`GET /v1/services/srv-...`, `GET /v1/services/.../env-vars`,
+> `GET /v1/services/.../deploys`), chứ **không phải** ảnh chụp giao diện
+> dashboard. Lý do: tài khoản Render đăng nhập bằng Google và máy không có
+> phiên đăng nhập nào sẵn, nên không mở được dashboard để chụp màn hình.
+> Các trường trong ảnh (`status = live`, `plan = free`, `region = oregon`,
+> `health check = /health`, danh sách tên biến) lấy nguyên văn từ API nên vẫn
+> kiểm chứng được độc lập. Tên biến `AGENT_API_KEY` và `REDIS_URL` chỉ in
+> **tên**, không in giá trị.
+
+> **Ghi chú về ảnh `ask_authorized.png`:** khóa API được đọc từ `.env` cục bộ
+> và chỉ dùng làm header khi gọi. Giá trị khóa **không** xuất hiện trong ảnh —
+> phần ghi chú dưới tiêu đề chỉ nói khóa lấy từ đâu.
 
 ## Nếu Dùng Phương Án Dự Phòng
 
