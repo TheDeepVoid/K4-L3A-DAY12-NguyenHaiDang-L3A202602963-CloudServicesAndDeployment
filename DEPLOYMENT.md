@@ -22,6 +22,27 @@
 | Platform | Render — web service `day12-agent` (docker runtime, plan free, region oregon) + Render Key Value `day12-redis` |
 | Ngày deploy | 28/09/2026 |
 
+Hai địa chỉ này khác nhau, đừng nhầm:
+
+| Mục | Địa chỉ | Ai dùng |
+|-----|----------|---------|
+| **Public URL** — API của service | `https://day12-agent-m3m7.onrender.com` | Bất kỳ ai cũng gọi được. Đây là URL Lab Coach kiểm tra. |
+| **Dashboard** — giao diện quản lý | `https://dashboard.render.com/web/srv-dat24j0473hc73ee404g` | Chỉ tài khoản Render đã đăng nhập mới mở được |
+
+| Mục | Nội dung |
+|-----|----------|
+| Service ID | `srv-dat24j0473hc73ee404g` |
+| Redis instance ID | `red-dat225l9fdbs73fk0u2g` |
+| Deploy hiện tại | `dep-dat2pcbbc2fs73av2g3g` — trạng thái `live`, commit `930fc6d` |
+| Auto deploy | bật (`autoDeployTrigger: commit`) — push `main` là Render tự build lại |
+| `healthCheckPath` | `/health` (giữ nguyên, **không** đổi sang `/`) |
+| CI/CD | GitHub Actions xanh — `Test (CP1-CP4)` 12s, `Build Docker image` 41s, `Deploy len Render` 6s |
+
+> **Ghi chú về auto deploy:** vì Render tự build mỗi khi có commit mới lên
+> `main`, nên bản đang chạy luôn khớp với commit mới nhất trong repo. Khi
+> push xong phải chờ build vài chục giây — free tier còn *ngủ đông* sau ~15
+> phút không có traffic, nên vài request đầu có thể mất 30–60 giây.
+
 ## Biến Môi Trường Đã Set Trên Cloud
 
 Ghi tên biến và **nguồn giá trị**, không ghi giá trị:
